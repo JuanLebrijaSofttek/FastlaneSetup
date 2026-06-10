@@ -84,10 +84,11 @@ This key lets the robot upload on your behalf without your Apple password.
 
 ---
 
-## STEP 2 — Create your "certificates" repo (~3 min)
+## STEP 2 — Create your one shared "certificates" repo (~3 min, done only once ever)
 
 This is a brand-new, empty, **private** GitHub repo that will safely store your
-Apple ID badges. You make it once and reuse it for all your apps.
+Apple ID badges. You make it **one time** and **reuse it for every app** you ever
+set up — you do NOT make a new one per app.
 
 1. Go to **github.com** → click **New repository**.
 2. Name it `certificates`.
@@ -104,7 +105,21 @@ Apple ID badges. You make it once and reuse it for all your apps.
 
 ---
 
-## STEP 3 — Generate your Apple badges, once (~15 min)
+## STEP 3 — Generate your Apple badges (run once PER APP, ~15 min)
+
+> **Read this first — it clears up the most common confusion:**
+> You run this step **once for each app** you want to ship (iOS and macOS apps
+> alike). It is NOT a single run that covers everything.
+>
+> - Your **certificate** (proves *you* are the developer) is created on your
+>   very first run, then **reused automatically** for every app afterward.
+> - A **provisioning profile** (ties the badge to *one specific app*) is made
+>   fresh on every run. That's why the command needs `--app_identifier` each
+>   time — it has to know which app.
+>
+> So: first app = sets up the shared certificate + that app's profile. Every
+> app after = reuses the certificate, adds a new profile. Everything is stored
+> in the same one `certificates` repo from Step 2.
 
 You run this from **this template's folder** (the one with the file named
 `Gemfile`). If you haven't downloaded this template yet, do that first and open
