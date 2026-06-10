@@ -1,0 +1,8 @@
+# Replace these with your project values.
+# app_identifier is read by match, gym, pilot, etc.
+
+app_identifier(ENV["APP_IDENTIFIER"]) # e.g. "com.yourcompany.yourapp"
+
+# Apple Developer Portal Team ID (10 chars, e.g. "ABCDE12345").
+# Used for code signing. Find it at developer.apple.com -> Membership.
+team_id(ENV["DEVELOPER_TEAM_ID"])

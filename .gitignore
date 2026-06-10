@@ -1,0 +1,15 @@
+# Never commit secrets or build artifacts
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.p12
+*.ipa
+*.pkg
+*.dSYM.zip
+.env
+fastlane/.env
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/test_output
+build/

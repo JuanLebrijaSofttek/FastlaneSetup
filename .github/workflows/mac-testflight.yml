@@ -1,0 +1,39 @@
+name: mac-testflight
+
+on:
+  push:
+    branches:
+      - master      # only merged/accepted code ships
+
+concurrency:
+  group: mac-testflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Build and upload to TestFlight
+        run: bundle exec fastlane mac beta
+        env:
+          CI: "true"
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY: ${{ secrets.ASC_KEY }}
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          APP_IDENTIFIER: ${{ vars.APP_IDENTIFIER }}
+          DEVELOPER_TEAM_ID: ${{ vars.DEVELOPER_TEAM_ID }}
+          SCHEME: ${{ vars.SCHEME }}
+          XCODEPROJ: ${{ vars.XCODEPROJ }}
+          XCWORKSPACE: ${{ vars.XCWORKSPACE }}
+          # Full name of your installer cert, from `security find-identity -v`:
+          MAC_INSTALLER_CERT_NAME: ${{ vars.MAC_INSTALLER_CERT_NAME }}

@@ -1,0 +1,41 @@
+name: ios-testflight
+
+on:
+  push:
+    branches:
+      - master      # only merged/accepted code ships
+
+# Cancel an in-progress run if a newer push lands.
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true   # installs the Gemfile and caches gems
+
+      - name: Build and upload to TestFlight
+        run: bundle exec fastlane ios beta
+        env:
+          CI: "true"
+          # --- App Store Connect API key ---
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY: ${{ secrets.ASC_KEY }}              # base64 of the .p8
+          # --- match (certs repo) ---
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+          # --- project info (safe to hardcode here instead of secrets) ---
+          APP_IDENTIFIER: ${{ vars.APP_IDENTIFIER }}
+          DEVELOPER_TEAM_ID: ${{ vars.DEVELOPER_TEAM_ID }}
+          SCHEME: ${{ vars.SCHEME }}
+          XCODEPROJ: ${{ vars.XCODEPROJ }}             # e.g. "App.xcodeproj"
+          XCWORKSPACE: ${{ vars.XCWORKSPACE }}         # e.g. "App.xcworkspace" or empty

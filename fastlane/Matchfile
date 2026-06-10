@@ -1,0 +1,11 @@
+# match reads this file. The certificates live in a SEPARATE private git repo,
+# encrypted with MATCH_PASSWORD. Never put the certs repo contents in your app repo.
+
+git_url(ENV["MATCH_GIT_URL"])      # e.g. "https://github.com/yourorg/certificates.git"
+storage_mode("git")
+
+# Always readonly on CI: the pipeline fetches existing certs, never creates them.
+# You generate certs ONCE locally (see README), then CI only reads them.
+readonly(true)
+
+app_identifier([ENV["APP_IDENTIFIER"]])

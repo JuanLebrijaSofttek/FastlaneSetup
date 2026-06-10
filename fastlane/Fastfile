@@ -1,0 +1,143 @@
+default_platform(:ios)
+
+# ============================================================================
+# Shared helpers
+# ============================================================================
+
+# Loads the single App Store Connect API key from the base64 secret.
+# Every later action (match, latest_testflight_build_number, pilot) reads the
+# shared value automatically, so we never pass api_key: again.
+def load_asc_api_key
+  app_store_connect_api_key(
+    key_id: ENV["ASC_KEY_ID"],
+    issuer_id: ENV["ASC_ISSUER_ID"],
+    key_content: ENV["ASC_KEY"],          # base64 of the .p8 file
+    is_key_content_base64: true,
+    in_house: false
+  )
+end
+
+# Returns true only if the given scheme has a runnable test action.
+# Uses `xcodebuild -showTestPlans`; no test plans / no test action -> false.
+# This is what enforces "if tests exist, they must pass" without hardcoding.
+def scheme_has_tests?(scheme)
+  container = if ENV["XCWORKSPACE"] && !ENV["XCWORKSPACE"].empty?
+                "-workspace #{ENV["XCWORKSPACE"]}"
+              else
+                "-project #{ENV["XCODEPROJ"]}"
+              end
+  output = `xcodebuild #{container} -scheme "#{scheme}" -showTestPlans 2>&1`
+  # "There are no test plans associated" OR a non-zero exit => no tests.
+  return false if output.include?("There are no test plans")
+  return false unless $?.success?
+  true
+end
+
+# Computes the next build number, never breaking on a brand-new app.
+# initial_build_number: 0 means a fresh app (no TestFlight builds) starts at 1.
+def next_build_number(platform)
+  latest = latest_testflight_build_number(
+    platform: platform,                   # "ios" or "osx"
+    initial_build_number: 0
+  )
+  latest + 1
+end
+
+# ============================================================================
+# iOS
+# ============================================================================
+
+platform :ios do
+  desc "Test (if tests exist) and upload an iOS build to TestFlight"
+  lane :beta do
+    setup_ci if ENV["CI"]                 # temp keychain; required on CI
+    load_asc_api_key
+    match(type: "appstore", platform: "ios", readonly: true)
+
+    scheme = ENV["SCHEME"]
+    if scheme_has_tests?(scheme)
+      UI.message("Test action found -> running tests (build fails if they fail).")
+      run_tests(
+        scheme: scheme,
+        workspace: ENV["XCWORKSPACE"],
+        project: (ENV["XCWORKSPACE"].to_s.empty? ? ENV["XCODEPROJ"] : nil),
+        fail_build: true
+      )
+    else
+      UI.important("No test action in scheme '#{scheme}' -> skipping tests.")
+    end
+
+    increment_build_number(
+      build_number: next_build_number("ios"),
+      xcodeproj: ENV["XCODEPROJ"]
+    )
+
+    build_app(
+      scheme: scheme,
+      workspace: (ENV["XCWORKSPACE"].to_s.empty? ? nil : ENV["XCWORKSPACE"]),
+      project: (ENV["XCWORKSPACE"].to_s.empty? ? ENV["XCODEPROJ"] : nil),
+      export_method: "app-store"
+    )
+
+    upload_to_testflight(skip_waiting_for_build_processing: true)
+  end
+end
+
+# ============================================================================
+# macOS
+# ============================================================================
+
+platform :mac do
+  desc "Test (if tests exist) and upload a macOS build to TestFlight"
+  lane :beta do
+    setup_ci if ENV["CI"]
+    load_asc_api_key
+
+    # 1) Apple Distribution cert + Mac App Store provisioning profile.
+    match(type: "appstore", platform: "macos", readonly: true)
+    # 2) 3rd Party Mac Developer Installer cert (signs the .pkg). No profile.
+    match(
+      type: "mac_installer_distribution",
+      platform: "macos",
+      readonly: true,
+      skip_provisioning_profiles: true
+    )
+
+    scheme = ENV["SCHEME"]
+    if scheme_has_tests?(scheme)
+      UI.message("Test action found -> running tests (build fails if they fail).")
+      run_tests(
+        scheme: scheme,
+        workspace: ENV["XCWORKSPACE"],
+        project: (ENV["XCWORKSPACE"].to_s.empty? ? ENV["XCODEPROJ"] : nil),
+        destination: "platform=macOS",
+        fail_build: true
+      )
+    else
+      UI.important("No test action in scheme '#{scheme}' -> skipping tests.")
+    end
+
+    increment_build_number(
+      build_number: next_build_number("osx"),
+      xcodeproj: ENV["XCODEPROJ"]
+    )
+
+    build_mac_app(
+      scheme: scheme,
+      workspace: (ENV["XCWORKSPACE"].to_s.empty? ? nil : ENV["XCWORKSPACE"]),
+      project: (ENV["XCWORKSPACE"].to_s.empty? ? ENV["XCODEPROJ"] : nil),
+      export_method: "app-store",
+      installer_cert_name: ENV["MAC_INSTALLER_CERT_NAME"]
+      # e.g. "3rd Party Mac Developer Installer: Your Company (ABCDE12345)"
+    )
+
+    # NOTE: no notarize step. TestFlight / Mac App Store builds are scanned and
+    # re-signed by Apple. Notarization is only for Developer-ID apps shipped
+    # OUTSIDE the App Store. Keep that in a separate lane if you ever need it.
+    upload_to_testflight(
+      app_platform: "osx",
+      pkg: lane_context[SharedValues::PKG_OUTPUT_PATH],
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
