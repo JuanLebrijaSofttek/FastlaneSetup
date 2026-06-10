@@ -11,8 +11,8 @@ def load_asc_api_key
   app_store_connect_api_key(
     key_id: ENV["ASC_KEY_ID"],
     issuer_id: ENV["ASC_ISSUER_ID"],
-    key_content: ENV["ASC_KEY"],          # base64 of the .p8 file
-    is_key_content_base64: true,
+    key_content: ENV["ASC_KEY"],          # the RAW contents of the .p8 file
+    is_key_content_base64: false,
     in_house: false
   )
 end
@@ -72,6 +72,18 @@ platform :ios do
       xcodeproj: ENV["XCODEPROJ"]
     )
 
+    # Force MANUAL signing with the match profile. Without this, projects set to
+    # "Automatic" signing fail at archive time because Xcode ignores the match
+    # profile and looks for an auto-managed one that doesn't exist on CI.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: ENV["XCODEPROJ"],
+      team_id: ENV["DEVELOPER_TEAM_ID"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore #{ENV['APP_IDENTIFIER']}",
+      bundle_identifier: ENV["APP_IDENTIFIER"]
+    )
+
     build_app(
       scheme: scheme,
       workspace: (ENV["XCWORKSPACE"].to_s.empty? ? nil : ENV["XCWORKSPACE"]),
@@ -120,6 +132,16 @@ platform :mac do
     increment_build_number(
       build_number: next_build_number("osx"),
       xcodeproj: ENV["XCODEPROJ"]
+    )
+
+    # Force MANUAL signing with the match profile (same reason as the iOS lane).
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: ENV["XCODEPROJ"],
+      team_id: ENV["DEVELOPER_TEAM_ID"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: "match AppStore #{ENV['APP_IDENTIFIER']}",
+      bundle_identifier: ENV["APP_IDENTIFIER"]
     )
 
     build_mac_app(

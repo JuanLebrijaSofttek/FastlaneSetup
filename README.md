@@ -37,7 +37,9 @@ Tick all of these off first. If any is missing, stop and get it.
    (appstoreconnect.apple.com → My Apps → "+"). This template does NOT create
    the app for you.
 5. Your app's code **already on GitHub** in a repo.
-6. **Homebrew + fastlane** installed on your Mac. If you don't have them, run
+6. An **app icon set** in your project. Open `Assets.xcassets` → `AppIcon` and
+   drop in a **1024×1024 PNG**. Apple rejects uploads with no icon.
+7. **Homebrew + fastlane** installed on your Mac. If you don't have them, run
    these two commands in Terminal (copy-paste each, press Enter, wait):
    ```bash
    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -137,38 +139,66 @@ its folder in Terminal.
    bundle install
    ```
 
-3. Generate the **iOS** badges (replace the two values in quotes):
+3. **Create your API key file** (this is what lets you skip the Apple ID login
+   and 2FA codes entirely). First, put your `.p8` file from Step 1 into this
+   template folder. Then run the command below, replacing the 3 values:
+   - `YOUR_KEY_ID` → the Key ID from Step 1
+   - `YOUR_ISSUER_ID` → the Issuer ID from Step 1
+   - `AuthKey_XXXX.p8` → your real `.p8` filename
+   ```bash
+   python3 -c "import json; print(json.dumps({'key_id':'YOUR_KEY_ID','issuer_id':'YOUR_ISSUER_ID','key':open('AuthKey_XXXX.p8').read(),'in_house':False}))" > api_key.json
+   ```
+   (Python is already installed on every Mac. This makes a small file called
+   `api_key.json` that match will use to log in for you.)
+
+4. Generate the **iOS** badges (replace the two values in quotes):
    ```bash
    bundle exec fastlane match appstore \
+     --api_key_path "api_key.json" \
      --git_url "https://github.com/YOURNAME/certificates.git" \
      --app_identifier "com.yourcompany.yourapp" \
      --readonly false
    ```
+   - `--api_key_path` = the file you just made. This is what avoids the Apple ID
+     login prompt.
    - `--git_url` = the certificates repo URL from Step 2.
    - `--app_identifier` = your app's bundle ID (find it in Xcode → your target →
      Signing & Capabilities → "Bundle Identifier").
 
-4. When it asks you to **"Create a new passphrase"**, type any password you
+5. When it asks you to **"Create a new passphrase"**, type any password you
    like, twice. **Write this down — it is your `MATCH_PASSWORD`.** You'll need
    it later and there's no way to recover it.
 
-5. It may ask for your **Apple ID login** — enter it. This is the only step that
-   needs your Apple password.
+   > You should NOT be asked for an Apple ID or a 2FA code. If you are, it means
+   > the `--api_key_path` line was missing or the `api_key.json` file is wrong —
+   > stop, fix it, and re-run.
 
-6. **Only if your app is macOS**, also run these two:
+6. **Only if your app is macOS**, also run these two (same `--api_key_path`):
    ```bash
    bundle exec fastlane match appstore --platform macos --readonly false \
+     --api_key_path "api_key.json" \
      --git_url "https://github.com/YOURNAME/certificates.git" \
      --app_identifier "com.yourcompany.yourapp"
 
    bundle exec fastlane match mac_installer_distribution --platform macos --readonly false \
+     --api_key_path "api_key.json" \
      --skip_provisioning_profiles true \
      --git_url "https://github.com/YOURNAME/certificates.git" \
      --app_identifier "com.yourcompany.yourapp"
    ```
 
+7. **Clean up** — delete the key file, since it holds your private key:
+   ```bash
+   rm api_key.json
+   ```
+
 ✅ **Done when:** the command finishes without red errors, and your once-empty
 `certificates` repo on GitHub now shows some encrypted files inside it.
+
+> **If you get a "permission" or "forbidden" error while it creates the
+> certificate:** your API key needs more access. Go back to Step 1, make a new
+> key with the **Admin** role instead of App Manager, rebuild `api_key.json`
+> with the new Key ID/Issuer ID/.p8, and re-run.
 
 ---
 
@@ -214,27 +244,30 @@ YourApp/
 Go to **YOUR app's repo on GitHub** → **Settings** → (left sidebar)
 **Secrets and variables** → **Actions**.
 
-### 5a. On the "Secrets" tab, click "New repository secret" and add these 6:
+### 5a. On the "Secrets" tab, click "New repository secret" and add these 5:
 
 | Name (type exactly) | What to paste |
 |---|---|
-| `ASC_KEY` | Your `.p8` file as text. Get it by running in Terminal: `base64 -i AuthKey_XXXX.p8 \| pbcopy` (replace with your real `.p8` filename), then paste — it's now on your clipboard. |
+| `ASC_KEY` | Your `.p8` file's full text. Get it by running in Terminal: `cat AuthKey_XXXX.p8 \| pbcopy` (replace with your real `.p8` filename), then paste. Include the `-----BEGIN/END PRIVATE KEY-----` lines. |
 | `ASC_KEY_ID` | The Key ID from Step 1. |
 | `ASC_ISSUER_ID` | The Issuer ID from Step 1. |
 | `MATCH_PASSWORD` | The passphrase you made in Step 3. |
-| `MATCH_GIT_URL` | Your certificates repo URL (e.g. `https://github.com/YOURNAME/certificates.git`). |
-| `MATCH_GIT_BASIC_AUTHORIZATION` | A login token so the robot can read your certificates repo. How to make it: see the box below. |
+| `MATCH_GIT_URL` | Your certificates repo URL **with a login token built in** so the robot can read it. Format below. |
 
-**Making `MATCH_GIT_BASIC_AUTHORIZATION`:**
-1. github.com → click your avatar → **Settings** → **Developer settings** →
-   **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. Give it access to **only** your `certificates` repo, with **Contents: Read**.
-3. Generate it and copy the token (starts with `github_pat_...`).
-4. In Terminal, run (use your GitHub username and the token):
-   ```bash
-   echo -n "YOUR_GITHUB_USERNAME:github_pat_xxxxx" | base64
+**Building `MATCH_GIT_URL` (with the token inside it):**
+1. github.com → your avatar → **Settings** → **Developer settings** →
+   **Personal access tokens** → **Tokens (classic)** → **Generate new token (classic)**.
+2. Tick the **`repo`** scope (covers private-repo read). Generate it and copy the
+   token (starts with `ghp_...`).
+3. Build the URL by dropping your username and token into this shape:
    ```
-5. Paste the result as the secret value.
+   https://YOUR_USERNAME:ghp_xxxxx@github.com/YOUR_USERNAME/certificates.git
+   ```
+4. Paste that whole URL as the `MATCH_GIT_URL` secret value.
+
+> Why the token goes in the URL: it's the simplest auth that works on CI — match
+> just clones the URL. A **classic** token avoids the org-approval and
+> header-format problems that commonly break fine-grained tokens here.
 
 ### 5b. Switch to the "Variables" tab, click "New repository variable", add these:
 
@@ -277,11 +310,16 @@ for Apple to process).
 | What you see | What to do |
 |---|---|
 | `Could not locate Gemfile` | You're in the wrong folder. `cd` into the folder that has the `Gemfile` (the template folder in Step 3, or your app folder in Step 6). |
-| Build hangs forever at "signing" | Make sure the variable/secret `CI` is set — it already is in the workflow file, so just confirm you didn't edit that file. |
+| `string contains null byte` at `app_store_connect_api_key` | Your `ASC_KEY` secret isn't the clean key text. Re-copy with `cat AuthKey_XXXX.p8 \| pbcopy` and paste it again (including the BEGIN/END lines). |
+| `could not read Username for 'https://github.com'` at `match` | The certs-repo auth failed. Make sure `MATCH_GIT_URL` includes the token: `https://USER:ghp_xxx@github.com/USER/certificates.git`. Test it with `git clone <that-url> /tmp/t`. |
+| `No profiles for '...' were found` at `build_app` | Your project uses Automatic signing. The Fastfile's `update_code_signing_settings` step fixes this — make sure it's present before `build_app`/`build_mac_app`. |
+| `Missing required icon` / `CFBundleIconName` at upload | No app icon. Add a 1024×1024 PNG to `Assets.xcassets` → `AppIcon`, commit, push. |
+| `built with the iOS 18.5 SDK ... must be built with iOS 26 SDK` | The runner used an old Xcode. The workflow's `setup-xcode` step picks the newest; if it still fails, change `runs-on: macos-latest` to `runs-on: macos-26`. |
+| Build hangs forever at "signing" | Make sure `CI: "true"` is set — it already is in the workflow file, so just confirm you didn't edit that line. |
 | `No matching profiles found` | The badges weren't generated for this app. Re-run Step 3 with the correct `--app_identifier`. |
 | `scheme not found` | You forgot to tick **"Shared"** on your scheme in Xcode (end of Step 4). |
 | macOS build says "Not Available for Testing" | A macOS-specific signing detail. Make sure you ran BOTH extra macOS commands in Step 3 step 6. |
-| `.pkg upload` fails on macOS | A known occasional fastlane hiccup. Re-run the GitHub action; if it keeps failing, run `bundle update fastlane` and push again. |
+| `.pkg upload` fails on macOS | A known occasional fastlane hiccup. Re-run the action; if it keeps failing, run `bundle update fastlane` and push again. |
 
 ---
 
@@ -290,5 +328,5 @@ for Apple to process).
 - It does **not** create your app in App Store Connect — do that yourself first.
 - It does **not** send builds to outside testers automatically — builds go to
   your internal TestFlight. (Advanced users can change this in the `Fastfile`.)
-- It does **not** need your Apple password during normal runs — only once, in
-  Step 3.
+- It does **not** need your Apple password at all — it logs in with your API key
+  (the `.p8`). You never type an Apple ID or a 2FA code.

@@ -1,5 +1,6 @@
 # Never commit secrets or build artifacts
 *.p8
+api_key.json
 *.mobileprovision
 *.provisionprofile
 *.cer
