@@ -10,21 +10,6 @@ copy-paste the commands exactly.
 
 ---
 
-## Plain-English glossary (read once, 2 min)
-
-- **Terminal** — a text window where you type commands. On a Mac, open it via
-  Spotlight: press `Cmd + Space`, type `Terminal`, press Enter.
-- **Repo (repository)** — a project folder stored on GitHub.
-- **Fastlane** — a free tool that builds and uploads apps for you.
-- **Certificate / provisioning profile** — Apple's ID badges that prove your app
-  is really from you. Apps won't upload without them. A tool called **match**
-  handles these so you don't have to.
-- **Secret** — a password or key you store safely in GitHub. GitHub hides it and
-  never shows it in logs.
-- **CI (Continuous Integration)** — a robot computer GitHub runs for you that
-  does the build automatically.
-
----
 
 ## What you need before starting
 
@@ -63,11 +48,9 @@ Don't worry about why — the steps below tell you exactly what to do with each.
 
 # SETUP — do these steps in order
 
-First time: about 1 hour. Take it slow. Each step says how you'll know it worked.
-
 ---
 
-## STEP 1 — Get your Apple API key (~5 min)
+## STEP 1 — Get your Apple API key
 
 This key lets the robot upload on your behalf without your Apple password.
 
@@ -86,7 +69,7 @@ This key lets the robot upload on your behalf without your Apple password.
 
 ---
 
-## STEP 2 — Create your one shared "certificates" repo (~3 min, done only once ever)
+## STEP 2 — Create your one shared "certificates" repo (done only once ever)
 
 This is a brand-new, empty, **private** GitHub repo that will safely store your
 Apple ID badges. You make it **one time** and **reuse it for every app** you ever
@@ -107,7 +90,7 @@ set up — you do NOT make a new one per app.
 
 ---
 
-## STEP 3 — Generate your Apple badges (run once PER APP, ~15 min)
+## STEP 3 — Generate your Apple badges (run once PER APP)
 
 > **Read this first — it clears up the most common confusion:**
 > You run this step **once for each app** you want to ship (iOS and macOS apps
@@ -202,7 +185,7 @@ its folder in Terminal.
 
 ---
 
-## STEP 4 — Put the template files into YOUR app (~3 min)
+## STEP 4 — Put the template files into YOUR app
 
 Now copy this template's files into your **app's** repo folder — the folder that
 contains your `.xcodeproj` file.
@@ -235,11 +218,11 @@ YourApp/
 
 > One more thing in Xcode: open your project → **Product menu → Scheme → Manage
 > Schemes** → make sure your app's scheme has the **"Shared"** box ticked. If
-> it's not shared, the robot can't find your app. (1 min.)
+> it's not shared, the robot can't find your app.
 
 ---
 
-## STEP 5 — Add your secrets to GitHub (~10 min)
+## STEP 5 — Add your secrets to GitHub
 
 Go to **YOUR app's repo on GitHub** → **Settings** → (left sidebar)
 **Secrets and variables** → **Actions**.
@@ -285,7 +268,7 @@ your variables.
 
 ---
 
-## STEP 6 — Turn it on (~2 min)
+## STEP 6 — Turn it on
 
 1. Commit and push your app (with the new files) to GitHub:
    ```bash
